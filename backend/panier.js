@@ -1,9 +1,21 @@
 // panier.js — Routes API panier pour 2HBC
-// Remplace le fichier panier.js existant dans le backend
-
 const express = require("express");
 const router = express.Router();
-const { authenticateToken } = require("./auth");
+const jwt = require("jsonwebtoken");
+const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+
+// Middleware auth inline (auth.js n'exporte pas authenticateToken séparément)
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: "Non authentifié" });
+  const token = authHeader.split(" ")[1];
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ error: "Token invalide ou expiré" });
+  }
+}
 
 module.exports = (db) => {
   // ─── GET /api/panier ────────────────────────────────────────────────────────
