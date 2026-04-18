@@ -21,4 +21,24 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS paniers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL,
+    date_creation TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (client_id) REFERENCES clients(id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS articles_panier (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    panier_id INTEGER NOT NULL,
+    produit_id INTEGER NOT NULL,
+    quantite INTEGER DEFAULT 1,
+    FOREIGN KEY (panier_id) REFERENCES paniers(id),
+    FOREIGN KEY (produit_id) REFERENCES produits(id)
+  )
+`);
+
 module.exports = db;
