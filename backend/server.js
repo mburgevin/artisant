@@ -7,6 +7,7 @@ const cors = require('cors');
 const db = require('./database');
 const authRouter = require('./auth');
 const adminRouter = require('./admin');
+const panierRouter = require('./panier');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -16,6 +17,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/panier', panierRouter(db));
 
 app.post('/api/recherche-produit', async (req, res) => {
   const refFab = (req.body.refFab || '').trim();

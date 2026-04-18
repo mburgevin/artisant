@@ -8,6 +8,7 @@ import Recherche from './components/Recherche';
 import AuthModal from './components/AuthModal';
 import Admin from './components/Admin';
 import NosProduits from './components/NosProduits';
+import Panier from './components/Panier';
 
 const styles = {
   container: {
@@ -49,6 +50,9 @@ function AppInner() {
     if (activeTab === 'admin') {
       return <Admin />;
     }
+    if (activeTab === 'panier') {
+      return <Panier />;
+    }
     if (activeTab === 'nos produits') {
       return <NosProduits onLoginClick={() => setShowAuthModal(true)} />;
     }
@@ -64,6 +68,7 @@ function AppInner() {
         user={user}
         onLoginClick={() => setShowAuthModal(true)}
         onLogout={logout}
+        onPanier={() => setActiveTab('panier')}
       />
       <NavTabs activeTab={activeTab} setActiveTab={setActiveTab} user={user} />
 

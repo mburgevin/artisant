@@ -62,7 +62,7 @@ const styles = {
   },
 };
 
-export default function Header({ onSearch, user, onLoginClick, onLogout }) {
+export default function Header({ onSearch, user, onLoginClick, onLogout, onPanier }) {
   const [inputValue, setInputValue] = useState('');
 
   const handleKeyPress = (e) => {
@@ -100,7 +100,7 @@ export default function Header({ onSearch, user, onLoginClick, onLogout }) {
           </button>
         )}
         <span style={styles.iconBtn}>Notre Offre</span>
-        <span style={styles.iconBtn}>Mon Panier 🛒</span>
+        <span style={styles.iconBtn} onClick={onPanier}>Mon Panier 🛒</span>
       </div>
     </header>
   );
