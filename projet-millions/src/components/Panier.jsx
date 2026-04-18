@@ -1,5 +1,5 @@
-import { useEffect, useState, useContext } from "react";
-import { AuthContext } from "./AuthContext";
+import { useEffect, useState } from "react";
+import { useAuth } from "./AuthContext";
 
 const API = "http://localhost:4000";
 
@@ -12,7 +12,8 @@ const FOURNISSEUR_REDIRECT = {
 };
 
 export default function Panier() {
-  const { token } = useContext(AuthContext);
+  const { user } = useAuth();
+  const token = localStorage.getItem('token');
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
