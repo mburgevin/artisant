@@ -106,6 +106,7 @@ app.post('/api/recherche-produit', async (req, res) => {
 
 function formatResults(rows) {
   return rows.map(r => ({
+    id:                    r.id,
     'référence_fabricant': r.reference_fabricant,
     nom_produit:           r.nom_produit,
     url_produit_rexel:     r.url_rexel,
