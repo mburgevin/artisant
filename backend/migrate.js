@@ -1,9 +1,8 @@
-// migrate.js — Lance ce script UNE FOIS pour créer les tables manquantes
+// migrate.js — Lance ce script UNE FOIS pour créer/mettre à jour les tables
 // Usage : node migrate.js
 
 const Database = require('better-sqlite3');
 const path = require('path');
-
 const db = new Database(path.join(__dirname, 'produits.db'));
 
 db.exec(`
@@ -25,6 +24,14 @@ db.exec(`
   )
 `);
 console.log('✅ Table articles_panier OK');
+
+// Ajouter colonne fournisseur si elle n'existe pas encore
+try {
+  db.exec(`ALTER TABLE articles_panier ADD COLUMN fournisseur TEXT DEFAULT 'meilleur'`);
+  console.log('✅ Colonne fournisseur ajoutée');
+} catch {
+  console.log('✅ Colonne fournisseur déjà présente');
+}
 
 db.close();
 console.log('Migration terminée !');

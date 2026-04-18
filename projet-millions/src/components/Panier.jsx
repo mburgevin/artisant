@@ -12,7 +12,7 @@ const FOURNISSEUR_REDIRECT = {
 };
 
 export default function Panier() {
-  const { user } = useAuth();
+  useAuth(); // garde le contexte auth actif
   const token = localStorage.getItem('token');
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +38,7 @@ export default function Panier() {
 
   useEffect(() => {
     if (token) fetchPanier();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   // Modifier la quantité d'un article

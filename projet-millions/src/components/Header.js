@@ -100,7 +100,7 @@ export default function Header({ onSearch, user, onLoginClick, onLogout, onPanie
           </button>
         )}
         <span style={styles.iconBtn}>Notre Offre</span>
-        <span style={styles.iconBtn} onClick={onPanier}>Mon Panier 🛒</span>
+        <span style={styles.iconBtn} onClick={onPanier}>Mon Panier</span>
       </div>
     </header>
   );

@@ -1,10 +1,10 @@
 // panier.js — Routes API panier pour 2HBC
+// Adapté à la structure réelle : prix_rexel, prix_sonepar, prix_yesss dans table produits
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
-// Middleware auth inline (auth.js n'exporte pas authenticateToken séparément)
 function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: "Non authentifié" });
@@ -18,199 +18,120 @@ function authenticateToken(req, res, next) {
 }
 
 module.exports = (db) => {
-  // ─── GET /api/panier ────────────────────────────────────────────────────────
-  // Retourne les articles du panier de l'utilisateur connecté,
-  // avec les infos produit et le fournisseur principal
+
+  // GET /api/panier
   router.get("/", authenticateToken, (req, res) => {
     try {
-      const articles = db
-        .prepare(
-          `
-          SELECT
-            ap.id,
-            ap.quantite,
-            p.id AS produit_id,
-            p.nom,
-            p.ref_fabricant,
-            p.specificite,
-            p.image_url,
-            p.marque,
-            COALESCE(pf.fournisseur_nom, f.nom, 'Non défini') AS fournisseur,
-            pf.prix
-          FROM articles_panier ap
-          JOIN paniers pa ON pa.id = ap.panier_id
-          JOIN produits p  ON p.id  = ap.produit_id
-          LEFT JOIN (
-            SELECT pf2.produit_id, pf2.prix, f2.nom AS fournisseur_nom
-            FROM produits_fournisseurs pf2
-            JOIN fournisseurs f2 ON f2.id = pf2.fournisseur_id
-            WHERE pf2.est_principal = 1
-          ) pf ON pf.produit_id = p.id
-          LEFT JOIN fournisseurs f ON f.id = (
-            SELECT fournisseur_id FROM produits_fournisseurs
-            WHERE produit_id = p.id LIMIT 1
-          )
-          WHERE pa.client_id = ?
-          ORDER BY fournisseur, ap.id
-        `
-        )
-        .all(req.user.id);
+      const articles = db.prepare(`
+        SELECT
+          ap.id,
+          ap.quantite,
+          ap.fournisseur,
+          p.id AS produit_id,
+          p.nom_produit AS nom,
+          p.reference_fabricant AS ref_fabricant,
+          p.image_rexel AS image_url,
+          p.prix_rexel,
+          p.prix_sonepar,
+          p.prix_yesss
+        FROM articles_panier ap
+        JOIN paniers pa ON pa.id = ap.panier_id
+        JOIN produits p ON p.id = ap.produit_id
+        WHERE pa.client_id = ?
+        ORDER BY ap.fournisseur, ap.id
+      `).all(req.user.id);
 
-      res.json(articles);
+      const result = articles.map(a => {
+        let prix = null;
+        if (a.fournisseur === 'Rexel') prix = a.prix_rexel;
+        else if (a.fournisseur === 'Sonepar') prix = a.prix_sonepar;
+        else if (a.fournisseur === 'Yesss') prix = a.prix_yesss;
+        return {
+          id: a.id,
+          quantite: a.quantite,
+          fournisseur: a.fournisseur || 'Non défini',
+          produit_id: a.produit_id,
+          nom: a.nom,
+          ref_fabricant: a.ref_fabricant,
+          image_url: a.image_url,
+          prix,
+        };
+      });
+
+      res.json(result);
     } catch (err) {
       console.error("Erreur GET panier:", err);
       res.status(500).json({ error: "Erreur serveur" });
     }
   });
 
-  // ─── POST /api/panier ───────────────────────────────────────────────────────
-  // Ajouter un produit au panier (crée le panier si inexistant)
+  // POST /api/panier
   router.post("/", authenticateToken, (req, res) => {
-    const { produit_id, quantite = 1 } = req.body;
+    const { produit_id, quantite = 1, fournisseur = 'meilleur' } = req.body;
+    if (!produit_id) return res.status(400).json({ error: "produit_id requis" });
 
-    if (!produit_id) {
-      return res.status(400).json({ error: "produit_id requis" });
-    }
+    const produit = db.prepare("SELECT id FROM produits WHERE id = ?").get(produit_id);
+    if (!produit) return res.status(400).json({ error: "Produit introuvable" });
 
     try {
-      // Trouver ou créer le panier actif
-      let panier = db
-        .prepare("SELECT id FROM paniers WHERE client_id = ? LIMIT 1")
-        .get(req.user.id);
-
+      let panier = db.prepare("SELECT id FROM paniers WHERE client_id = ? LIMIT 1").get(req.user.id);
       if (!panier) {
-        const result = db
-          .prepare(
-            "INSERT INTO paniers (client_id, date_creation) VALUES (?, datetime('now'))"
-          )
-          .run(req.user.id);
-        panier = { id: result.lastInsertRowid };
+        const r = db.prepare("INSERT INTO paniers (client_id) VALUES (?)").run(req.user.id);
+        panier = { id: r.lastInsertRowid };
       }
 
-      // Vérifier si l'article existe déjà dans le panier
-      const existant = db
-        .prepare(
-          "SELECT id, quantite FROM articles_panier WHERE panier_id = ? AND produit_id = ?"
-        )
-        .get(panier.id, produit_id);
+      const existant = db.prepare(
+        "SELECT id, quantite FROM articles_panier WHERE panier_id = ? AND produit_id = ? AND fournisseur = ?"
+      ).get(panier.id, produit_id, fournisseur);
 
       if (existant) {
-        // Mettre à jour la quantité
-        db.prepare("UPDATE articles_panier SET quantite = ? WHERE id = ?").run(
-          existant.quantite + quantite,
-          existant.id
-        );
-        return res.json({
-          message: "Quantité mise à jour",
-          id: existant.id,
-          quantite: existant.quantite + quantite,
-        });
+        db.prepare("UPDATE articles_panier SET quantite = ? WHERE id = ?").run(existant.quantite + quantite, existant.id);
+        return res.json({ message: "Quantité mise à jour", id: existant.id, quantite: existant.quantite + quantite });
       }
 
-      // Insérer le nouvel article
-      const insert = db
-        .prepare(
-          "INSERT INTO articles_panier (panier_id, produit_id, quantite) VALUES (?, ?, ?)"
-        )
-        .run(panier.id, produit_id, quantite);
+      const insert = db.prepare(
+        "INSERT INTO articles_panier (panier_id, produit_id, quantite, fournisseur) VALUES (?, ?, ?, ?)"
+      ).run(panier.id, produit_id, quantite, fournisseur);
 
-      res.status(201).json({
-        message: "Produit ajouté au panier",
-        id: insert.lastInsertRowid,
-        produit_id,
-        quantite,
-      });
+      res.status(201).json({ message: "Produit ajouté", id: insert.lastInsertRowid, produit_id, quantite, fournisseur });
     } catch (err) {
       console.error("Erreur POST panier:", err);
       res.status(500).json({ error: "Erreur serveur" });
     }
   });
 
-  // ─── PATCH /api/panier/:id ──────────────────────────────────────────────────
-  // Modifier la quantité d'un article
+  // PATCH /api/panier/:id
   router.patch("/:id", authenticateToken, (req, res) => {
     const { quantite } = req.body;
     const articleId = parseInt(req.params.id);
-
-    if (!quantite || quantite < 1) {
-      return res.status(400).json({ error: "Quantité invalide (min: 1)" });
-    }
-
+    if (!quantite || quantite < 1) return res.status(400).json({ error: "Quantité invalide" });
     try {
-      // Vérifier que l'article appartient bien à l'utilisateur
-      const article = db
-        .prepare(
-          `
-          SELECT ap.id FROM articles_panier ap
-          JOIN paniers pa ON pa.id = ap.panier_id
-          WHERE ap.id = ? AND pa.client_id = ?
-        `
-        )
-        .get(articleId, req.user.id);
-
-      if (!article) {
-        return res.status(404).json({ error: "Article non trouvé" });
-      }
-
-      db.prepare("UPDATE articles_panier SET quantite = ? WHERE id = ?").run(
-        quantite,
-        articleId
-      );
-
+      const article = db.prepare(`
+        SELECT ap.id FROM articles_panier ap
+        JOIN paniers pa ON pa.id = ap.panier_id
+        WHERE ap.id = ? AND pa.client_id = ?
+      `).get(articleId, req.user.id);
+      if (!article) return res.status(404).json({ error: "Article non trouvé" });
+      db.prepare("UPDATE articles_panier SET quantite = ? WHERE id = ?").run(quantite, articleId);
       res.json({ message: "Quantité mise à jour", id: articleId, quantite });
     } catch (err) {
-      console.error("Erreur PATCH panier:", err);
       res.status(500).json({ error: "Erreur serveur" });
     }
   });
 
-  // ─── DELETE /api/panier/:id ─────────────────────────────────────────────────
-  // Supprimer un article du panier
+  // DELETE /api/panier/:id
   router.delete("/:id", authenticateToken, (req, res) => {
     const articleId = parseInt(req.params.id);
-
     try {
-      // Vérifier que l'article appartient bien à l'utilisateur
-      const article = db
-        .prepare(
-          `
-          SELECT ap.id FROM articles_panier ap
-          JOIN paniers pa ON pa.id = ap.panier_id
-          WHERE ap.id = ? AND pa.client_id = ?
-        `
-        )
-        .get(articleId, req.user.id);
-
-      if (!article) {
-        return res.status(404).json({ error: "Article non trouvé" });
-      }
-
+      const article = db.prepare(`
+        SELECT ap.id FROM articles_panier ap
+        JOIN paniers pa ON pa.id = ap.panier_id
+        WHERE ap.id = ? AND pa.client_id = ?
+      `).get(articleId, req.user.id);
+      if (!article) return res.status(404).json({ error: "Article non trouvé" });
       db.prepare("DELETE FROM articles_panier WHERE id = ?").run(articleId);
-
       res.json({ message: "Article supprimé", id: articleId });
     } catch (err) {
-      console.error("Erreur DELETE panier:", err);
-      res.status(500).json({ error: "Erreur serveur" });
-    }
-  });
-
-  // ─── DELETE /api/panier ─────────────────────────────────────────────────────
-  // Vider tout le panier
-  router.delete("/", authenticateToken, (req, res) => {
-    try {
-      const panier = db
-        .prepare("SELECT id FROM paniers WHERE client_id = ? LIMIT 1")
-        .get(req.user.id);
-
-      if (panier) {
-        db.prepare("DELETE FROM articles_panier WHERE panier_id = ?").run(
-          panier.id
-        );
-      }
-
-      res.json({ message: "Panier vidé" });
-    } catch (err) {
-      console.error("Erreur DELETE panier:", err);
       res.status(500).json({ error: "Erreur serveur" });
     }
   });
