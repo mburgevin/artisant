@@ -24,10 +24,11 @@ function getAllPrix(item) {
 function DetailModal({ item, onClose }) {
   const allPrix = getAllPrix(item);
   const best = getBestPrix(item);
+  const [fournisseurChoisi, setFournisseurChoisi] = useState(best ? best.label : (allPrix[0]?.label || null));
   const [ajoutMsg, setAjoutMsg] = useState('');
   const [loadingAjout, setLoadingAjout] = useState(false);
 
-  const ajouterAuPanier = async (produitId) => {
+  const ajouterAuPanier = async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     setLoadingAjout(true);
@@ -35,16 +36,16 @@ function DetailModal({ item, onClose }) {
       const res = await fetch(`${API_URL}/api/panier`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ produit_id: produitId, quantite: 1 }),
+        body: JSON.stringify({ produit_id: item.id, quantite: 1, fournisseur: fournisseurChoisi }),
       });
       if (res.ok) {
-        setAjoutMsg('✅ Ajouté au panier !');
-        setTimeout(() => setAjoutMsg(''), 2000);
+        setAjoutMsg('Ajouté au panier !');
+        setTimeout(() => setAjoutMsg(''), 2500);
       } else {
-        setAjoutMsg('❌ Erreur, réessaie.');
+        setAjoutMsg('Erreur, réessaie.');
       }
     } catch {
-      setAjoutMsg('❌ Erreur réseau.');
+      setAjoutMsg('Erreur réseau.');
     } finally {
       setLoadingAjout(false);
     }
@@ -63,17 +64,38 @@ function DetailModal({ item, onClose }) {
         {allPrix.length > 0 ? (
           <>
             <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', marginBottom: '10px' }}>
-              Comparatif prix fournisseurs (HT)
+              Choisir le fournisseur
             </div>
             {allPrix.map(({ label, value }) => {
               const isBest = best && label === best.label;
+              const isSelected = fournisseurChoisi === label;
               return (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: '8px', marginBottom: '8px', border: isBest ? '2px solid #00a040' : '1px solid #eee', backgroundColor: isBest ? '#f0faf4' : '#fff' }}>
-                  <div>
-                    <div style={{ fontWeight: '600', fontSize: '14px', color: isBest ? '#00a040' : '#333' }}>{label}</div>
-                    {isBest && <div style={{ fontSize: '11px', color: '#2e7d32' }}>Meilleur prix</div>}
+                <div
+                  key={label}
+                  onClick={() => setFournisseurChoisi(label)}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '12px 14px', borderRadius: '8px', marginBottom: '8px', cursor: 'pointer',
+                    border: isSelected ? '2px solid #2c3e50' : (isBest ? '2px solid #00a040' : '1px solid #eee'),
+                    backgroundColor: isSelected ? '#f0f4f8' : (isBest ? '#f0faf4' : '#fff'),
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {/* Radio visuel */}
+                    <div style={{
+                      width: '16px', height: '16px', borderRadius: '50%',
+                      border: isSelected ? '5px solid #2c3e50' : '2px solid #ccc',
+                      flexShrink: 0, transition: 'all 0.15s',
+                    }} />
+                    <div>
+                      <div style={{ fontWeight: '600', fontSize: '14px', color: isSelected ? '#2c3e50' : (isBest ? '#00a040' : '#333') }}>{label}</div>
+                      {isBest && <div style={{ fontSize: '11px', color: '#2e7d32' }}>Meilleur prix</div>}
+                    </div>
                   </div>
-                  <span style={{ fontWeight: '700', fontSize: '18px', color: isBest ? '#00a040' : '#333' }}>{value.toFixed(2)} €</span>
+                  <span style={{ fontWeight: '700', fontSize: '18px', color: isSelected ? '#2c3e50' : (isBest ? '#00a040' : '#333') }}>
+                    {value.toFixed(2)} €
+                  </span>
                 </div>
               );
             })}
@@ -82,17 +104,16 @@ function DetailModal({ item, onClose }) {
           <div style={{ textAlign: 'center', color: '#aaa', fontStyle: 'italic', padding: '20px 0' }}>Prix en cours de négociation</div>
         )}
 
-        {/* Bouton Ajouter au panier */}
         <button
-          onClick={() => ajouterAuPanier(item.id)}
-          disabled={loadingAjout}
-          style={{ width: '100%', padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#2c3e50', color: '#fff', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginTop: '16px', opacity: loadingAjout ? 0.7 : 1 }}
+          onClick={ajouterAuPanier}
+          disabled={loadingAjout || !fournisseurChoisi}
+          style={{ width: '100%', padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#2c3e50', color: '#fff', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginTop: '16px', opacity: (loadingAjout || !fournisseurChoisi) ? 0.7 : 1 }}
         >
-          {loadingAjout ? 'Ajout...' : '🛒 Ajouter au panier'}
+          {loadingAjout ? 'Ajout en cours...' : 'Ajouter au panier'}
         </button>
 
         {ajoutMsg && (
-          <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '14px', fontWeight: '600', color: ajoutMsg.startsWith('✅') ? '#00a040' : '#e74c3c' }}>
+          <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '14px', fontWeight: '600', color: ajoutMsg === 'Ajouté au panier !' ? '#00a040' : '#e74c3c' }}>
             {ajoutMsg}
           </div>
         )}
