@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from './AuthContext';
 
 const HISTORIQUE = [
   { date: '14 avr. 2026', produit: 'Spot LED X6 fixe 5W chrome',       fournisseur: 'Yesss',   prix: 6.80,    economie: 0.80  },
@@ -34,7 +35,16 @@ const S = {
 };
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const totalEco = HISTORIQUE.reduce((s, r) => s + r.economie, 0);
+
+  if (!user) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 12 }}>
+        <p style={{ fontSize: 16, color: '#64748b', margin: 0 }}>Connectez-vous pour voir vos économies.</p>
+      </div>
+    );
+  }
 
   // Chart via useEffect
   React.useEffect(() => {
