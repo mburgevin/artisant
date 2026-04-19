@@ -38,16 +38,9 @@ export default function Dashboard() {
   const { user } = useAuth();
   const totalEco = HISTORIQUE.reduce((s, r) => s + r.economie, 0);
 
-  if (!user) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 12 }}>
-        <p style={{ fontSize: 16, color: '#64748b', margin: 0 }}>Connectez-vous pour voir vos économies.</p>
-      </div>
-    );
-  }
-
-  // Chart via useEffect
+  // useEffect toujours appelé, même si non connecté
   React.useEffect(() => {
+    if (!user) return;
     if (!window.Chart) return;
     const ctx = document.getElementById('chartEco');
     if (!ctx) return;
@@ -75,12 +68,19 @@ export default function Dashboard() {
     });
     ctx._chart = chart;
     return () => chart.destroy();
-  }, []);
+  }, [user]);
+
+  if (!user) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+        <p style={{ fontSize: 16, color: '#64748b' }}>Connectez-vous pour voir vos économies.</p>
+      </div>
+    );
+  }
 
   return (
     <div style={S.page}>
 
-      {/* Métriques */}
       <p style={S.sectionTitle}>Résumé des économies</p>
       <div style={S.metricGrid}>
         <div style={S.metric}>
@@ -100,7 +100,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Historique */}
       <p style={S.sectionTitle}>Historique des commandes</p>
       <div style={S.card}>
         <div style={S.tableHead}>
@@ -124,7 +123,6 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Graphique */}
       <p style={S.sectionTitle}>Évolution des économies (6 derniers mois)</p>
       <div style={S.card}>
         <div style={S.chartWrap}>
@@ -132,14 +130,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Projection */}
       <p style={S.sectionTitle}>Projection annuelle</p>
       <div style={S.card}>
         {[
-          ['Rythme d\'achat actuel',          '~2,8 commandes / mois'],
-          ['Volume annuel estimé',             '18 400 €'],
-          ['Économies projetées sur 12 mois',  '≈ 1 160 €', true],
-          ['Soit en % du volume d\'achat',     '6,3 %', true],
+          ["Rythme d'achat actuel",          '~2,8 commandes / mois', false],
+          ['Volume annuel estimé',             '18 400 €',             false],
+          ['Économies projetées sur 12 mois',  '≈ 1 160 €',            true],
+          ["Soit en % du volume d'achat",      '6,3 %',                true],
         ].map(([label, val, green], i) => (
           <div key={i} style={S.projRow}>
             <span style={{ color: '#64748b' }}>{label}</span>
