@@ -38,6 +38,7 @@ export default function NavTabs({ activeTab, setActiveTab, user }) {
     { id: 'nos produits', label: 'Nos produits' },
     { id: 'nouveau', label: 'Nouveau' },
     { id: 'partenaires', label: 'Nos partenaires' },
+    { id: 'dashboard', label: 'Mes économies' },
   ];
 
   return (

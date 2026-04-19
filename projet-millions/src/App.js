@@ -9,6 +9,7 @@ import AuthModal from './components/AuthModal';
 import Admin from './components/Admin';
 import NosProduits from './components/NosProduits';
 import Panier from './components/Panier';
+import Dashboard from './components/Dashboard';
 
 const styles = {
   container: {
@@ -52,6 +53,9 @@ function AppInner() {
     }
     if (activeTab === 'panier') {
       return <Panier />;
+    }
+    if (activeTab === 'dashboard') {
+      return <Dashboard />;
     }
     if (activeTab === 'nos produits') {
       return <NosProduits onLoginClick={() => setShowAuthModal(true)} />;
